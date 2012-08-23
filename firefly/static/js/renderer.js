@@ -95,6 +95,7 @@ firefly.Renderer.prototype._createSVG = function() {
 	g.append("svg:g").attr("class", "areas");
 	g.append("svg:g").attr("class", "guide-dots");
 	g.append("svg:g").attr("class", "annotations");
+	g.append("svg:g").attr("class", "thresholds");
 
 	var guideGroup = g.append('svg:g');
 	this.guideLine_ = guideGroup.append('svg:line')
@@ -475,6 +476,27 @@ firefly.Renderer.prototype._redraw = function (data) {
 		this.drawAnnotations(div, data);
 	}
 
+	// render threshold lines
+	data.options.thresholds = [{'val':0.7, 'name': 'bad'}, {'val':0.3, 'name': 'woo'}]; // TODO: Actually set this in edit
+	var thresholds = div.select(".thresholds").selectAll(".threshold").data(data.options.thresholds);
+	thresholds.enter().append("svg:line").attr("class", "threshold");
+	thresholds.exit().remove();
+
+	// and now draw the threshold tips
+	var threshold_tooltips = div.selectAll(".threshold-tooltip").data(data.options.thresholds);
+	threshold_tooltips.enter()
+		.append("div")
+			.attr('class', 'threshold-tooltip')
+		.append("table")
+		.append("tbody")
+		.append("td")
+			.attr('class', 'threshold-tooltip-value')
+			.attr('title', function(d){ return d.name; });
+	threshold_tooltips.exit().remove();
+	if (thresholds) {
+		this.drawThresholds(div, data);
+	}
+
 	this.line
 		.x(function(d) { return that.xScale(d.x); })
 		.y(function(d) {
@@ -597,6 +619,29 @@ firefly.Renderer.prototype.redrawGuides_ = function(data) {
 				});
 };
 
+/**
+ * Draws threshold lines
+ */
+firefly.Renderer.prototype.drawThresholds = function(div, data){
+	var renderer = this;
+
+	div.selectAll(".threshold")
+		.attr("y1", function(d){ return renderer.yScale(d.val); })
+		.attr("y2", function(d){ return renderer.yScale(d.val); })
+		.attr("x1", 0)
+		.attr("x2", this.width);
+
+	div.selectAll(".threshold-tooltip-value")
+		.text(function(d){
+			var label = d.name;
+			if (data.options.short_annotations) label = label.substring(0,1);
+			return label;
+		})
+
+	div.selectAll(".threshold-tooltip")
+		.style('top', function(d) { return Math.round($(renderer.container).position().top + renderer.yScale(d.val) + 1) + 'px'; })
+		.style('left', '0');
+};
 
 /**
  * Does the legwork of drawing annotation lines and their corresponding tooltips.
